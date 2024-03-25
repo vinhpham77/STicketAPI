@@ -12,8 +12,6 @@ import org.vinhpham.sticket.entities.Device;
 import org.vinhpham.sticket.entities.User;
 import org.vinhpham.sticket.repositories.UserRepository;
 
-import java.time.Instant;
-import java.util.HashMap;
 import java.util.Optional;
 
 @Service

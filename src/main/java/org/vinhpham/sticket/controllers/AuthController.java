@@ -21,8 +21,14 @@ public class AuthController {
     private final AuthenticationService authenticationService;
 
     @PostMapping("/signin")
-    public ResponseEntity<?> signin(@Valid @RequestBody SignInRequest request) {
-        return new ResponseEntity<>(authenticationService.signin(request), HttpStatus.OK);
+    public ResponseEntity<?> signin(@Valid @RequestBody SignInRequest signin, HttpServletRequest request) {
+        String ipAddress = request.getHeader("X-FORWARDED-FOR");
+        String deviceName = request.getHeader("X-Device-Name");
+        String deviceId = request.getHeader("X-Device-Id");
+
+        JsonWebToken response = authenticationService.signin(signin, deviceId, deviceName, ipAddress);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @PostMapping("/signup")
@@ -46,7 +52,7 @@ public class AuthController {
         for (Cookie cookie : cookies) {
             if (cookie.getName().equals("refresh_token")) {
                 String refreshToken = cookie.getValue();
-                authenticationService.logout(refreshToken);
+                // TODO authenticationService.logout(refreshToken);
                 return ResponseEntity.ok("Đăng xuất thành công!");
             }
         }
@@ -56,6 +62,9 @@ public class AuthController {
 
     @GetMapping("/refresh-token")
     public ResponseEntity<?> getRefreshToken(HttpServletRequest request) {
+        String ipAddress = request.getHeader("X-FORWARDED-FOR");
+        String deviceName = request.getHeader("X-Device-Name");
+        String deviceId = request.getHeader("X-Device-Id");
         Cookie[] cookies = request.getCookies();
 
         if (cookies == null) {
@@ -65,7 +74,7 @@ public class AuthController {
         for (Cookie cookie : cookies) {
             if (cookie.getName().equals("refresh_token")) {
                 String refreshToken = cookie.getValue();
-                JsonWebToken response = authenticationService.refreshToken(refreshToken);
+                JsonWebToken response = authenticationService.refreshToken(refreshToken, deviceId, deviceName, ipAddress);
                 return ResponseEntity.ok(response);
             }
         }
