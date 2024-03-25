@@ -10,6 +10,11 @@ spring.servlet.multipart.max-file-size=2MB
 spring.servlet.multipart.max-request-size=15MB
 spring.web.locale=vi_VN
 spring.web.locale-resolver=fixed
+spring.cache.type=redis
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+# 1 week
+app.security.refresh-token.ttl=7
 
 # node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 token.secret.key=48a868a4042f634ac04a117f00a87202131dd7c46c4b32c4acb3edc5e15f4511
