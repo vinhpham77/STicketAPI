@@ -23,7 +23,6 @@ import java.util.Objects;
 public class User implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "username", nullable = false, length = 50)
     private String username;
 

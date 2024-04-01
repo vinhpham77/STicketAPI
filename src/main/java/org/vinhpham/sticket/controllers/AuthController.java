@@ -4,12 +4,12 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.vinhpham.sticket.dtos.JsonWebToken;
-import org.vinhpham.sticket.dtos.SignInRequest;
-import org.vinhpham.sticket.dtos.UserDto;
+import org.vinhpham.sticket.common.Constants;
+import org.vinhpham.sticket.dtos.*;
 import org.vinhpham.sticket.entities.User;
 import org.vinhpham.sticket.services.AuthenticationService;
 
@@ -19,25 +19,26 @@ import org.vinhpham.sticket.services.AuthenticationService;
 public class AuthController {
 
     private final AuthenticationService authenticationService;
+    private final MessageSource messageSource;
 
-    @PostMapping("/signin")
-    public ResponseEntity<?> signin(@Valid @RequestBody SignInRequest signin, HttpServletRequest request) {
-        String ipAddress = request.getHeader("X-FORWARDED-FOR");
-        String deviceName = request.getHeader("X-Device-Name");
-        String deviceId = request.getHeader("X-Device-Id");
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@Valid @RequestBody Login login, HttpServletRequest request) {
+        String deviceId = request.getHeader(Constants.KEY_DEVICE_ID);
+        String deviceName = request.getHeader(Constants.KEY_DEVICE_NAME);
 
-        JsonWebToken response = authenticationService.signin(signin, deviceId, deviceName, ipAddress);
+        JWT jwt = authenticationService.login(login, deviceId, deviceName);
 
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        return Success.ok(jwt);
     }
 
-    @PostMapping("/signup")
-    public ResponseEntity<?> signup(@Valid @RequestBody UserDto signup) {
-        User newUser = authenticationService.signup(signup);
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody UserDto userDto) {
+        User newUser = authenticationService.register(userDto);
+
         if (newUser != null) {
-            return new ResponseEntity<>(newUser, HttpStatus.OK);
+            return Success.response(newUser, HttpStatus.CREATED);
         } else {
-            return new ResponseEntity<>("Đăng ký không thành công", HttpStatus.INTERNAL_SERVER_ERROR);
+            return Failure.internal(messageSource, "error.register.failed");
         }
     }
 
@@ -46,39 +47,38 @@ public class AuthController {
         Cookie[] cookies = request.getCookies();
 
         if (cookies == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Chưa cung cấp refresh token");
+            return Failure.internal(messageSource, "error.something.wrong");
         }
 
         for (Cookie cookie : cookies) {
             if (cookie.getName().equals("refresh_token")) {
-                String refreshToken = cookie.getValue();
+                // String refreshToken = cookie.getValue();
                 // TODO authenticationService.logout(refreshToken);
-                return ResponseEntity.ok("Đăng xuất thành công!");
+                return Success.noContent();
             }
         }
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Chưa cung cấp refresh token");
+        return Failure.internal(messageSource, "error.something.wrong");
     }
 
     @GetMapping("/refresh-token")
     public ResponseEntity<?> getRefreshToken(HttpServletRequest request) {
-        String ipAddress = request.getHeader("X-FORWARDED-FOR");
-        String deviceName = request.getHeader("X-Device-Name");
-        String deviceId = request.getHeader("X-Device-Id");
+        String deviceId = request.getHeader(Constants.KEY_DEVICE_ID);
+        String deviceName = request.getHeader(Constants.KEY_DEVICE_NAME);
         Cookie[] cookies = request.getCookies();
 
         if (cookies == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Chưa cung cấp refresh token");
+            return Failure.internal(messageSource, "error.something.wrong");
         }
 
         for (Cookie cookie : cookies) {
-            if (cookie.getName().equals("refresh_token")) {
+            if (cookie.getName().equals(Constants.KEY_REFRESH_TOKEN)) {
                 String refreshToken = cookie.getValue();
-                JsonWebToken response = authenticationService.refreshToken(refreshToken, deviceId, deviceName, ipAddress);
-                return ResponseEntity.ok(response);
+                JWT jwt = authenticationService.refreshToken(refreshToken, deviceId, deviceName);
+                return Success.ok(jwt);
             }
         }
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Chưa cung cấp refresh token");
+        return Failure.internal(messageSource, "error.something.wrong");
     }
 }

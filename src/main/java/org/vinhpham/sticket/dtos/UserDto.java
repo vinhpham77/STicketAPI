@@ -13,7 +13,7 @@ import org.hibernate.validator.constraints.Length;
 @AllArgsConstructor
 public class UserDto {
 
-    @NotBlank(message = "Tên đăng nhập không được để trống")
+    @NotBlank(message = "{username.notBlank}")
     @Length(min = 6, max = 50, message = "Tên đăng nhập phải có ít nhất 6 ký tự và tối đa 50 ký tự")
     private String username;
 

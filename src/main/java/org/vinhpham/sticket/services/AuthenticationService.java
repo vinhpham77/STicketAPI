@@ -2,17 +2,27 @@ package org.vinhpham.sticket.services;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.vinhpham.sticket.dtos.*;
+import org.vinhpham.sticket.common.Utils;
+import org.vinhpham.sticket.dtos.HandleException;
+import org.vinhpham.sticket.dtos.JWT;
+import org.vinhpham.sticket.dtos.Login;
+import org.vinhpham.sticket.dtos.UserDto;
 import org.vinhpham.sticket.entities.Device;
 import org.vinhpham.sticket.entities.User;
 import org.vinhpham.sticket.repositories.UserRepository;
 
 import java.util.Optional;
+
+import static org.vinhpham.sticket.common.Constants.IS_ACCESS_TOKEN;
+import static org.vinhpham.sticket.common.Constants.IS_REFRESH_TOKEN;
 
 @Service
 @RequiredArgsConstructor
@@ -24,26 +34,33 @@ public class AuthenticationService {
     private final RefreshTokenService refreshTokenService;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
+    private final MessageSource messageSource;
 
-    public User signup(UserDto request) {
+    @Transactional
+    public User register(UserDto request) {
         String username = request.getUsername();
         String email = request.getEmail();
 
-        Optional<User> userOptional = userRepository.findByUsername(username);
+        Optional<User> userOptional = userRepository.findById(username);
+        String message;
 
         if (userOptional.isPresent()) {
-            throw new ApiException("Tên đăng nhập đã tồn tại", HttpStatus.BAD_REQUEST);
+            message = Utils.getMessage(messageSource, "error.username.exists");
+            throw HandleException.bad(message);
         }
 
         Optional<User> emailOptional = userRepository.findByEmail(email);
 
         if (emailOptional.isPresent()) {
-            throw new ApiException("Email đã tồn tại", HttpStatus.BAD_REQUEST);
+            message = Utils.getMessage(messageSource, "error.email.exists");
+            throw HandleException.bad(message);
         }
+
+        String hashPassword = passwordEncoder.encode(request.getPassword());
 
         User user = User.builder()
                 .username(username)
-                .hashPassword(passwordEncoder.encode(request.getPassword()))
+                .hashPassword(hashPassword)
                 .email(request.getEmail())
                 .build();
 
@@ -51,59 +68,68 @@ public class AuthenticationService {
     }
 
     @Transactional
-    public JsonWebToken signin(SignInRequest request, String deviceId, String deviceName, String ipAddress) {
-        User user;
+    public JWT login(Login request, String deviceId, String deviceName) {
         String username = request.getUsername();
         String password = request.getPassword();
+        Authentication authentication;
 
         try {
-            user = (User) authenticationManager.authenticate(
+            authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(username, password));
-        } catch (Exception e) {
-            throw new ApiException("Tài khoản hoặc mật khẩu không hợp lệ", HttpStatus.UNAUTHORIZED);
+        } catch (AuthenticationException e) {
+            String message = Utils.getMessage(messageSource, "error.username.password.invalid");
+            throw new HandleException(message, HttpStatus.UNAUTHORIZED);
         }
 
-        return getJwtResponse(user, deviceId, deviceName, ipAddress);
+        User user = (User) authentication.getPrincipal();
+
+        return getJWTs(user, deviceId, deviceName);
     }
 
-    public JsonWebToken refreshToken(String refreshToken, String deviceId, String deviceName, String ipAddress) {
-        Optional<RefreshToken> token = refreshTokenService.get(deviceId);
+    @Transactional
+    public JWT refreshToken(String refreshToken, String deviceId, String deviceName) {
+        Optional<String> jwt = refreshTokenService.get(deviceId);
 
-        if (token.isEmpty() || !token.get().getRefreshToken().equals(refreshToken)) {
-            throw new ApiException("Phiên truy cập đã hết hạn. Vui lòng đăng nhập lại!", HttpStatus.PRECONDITION_FAILED);
+        if (jwt.isEmpty() || !refreshToken.equals(jwt.get())) {
+            String message = Utils.getMessage(messageSource, "error.jwt.session.expired");
+            throw new HandleException(message, HttpStatus.PRECONDITION_FAILED);
         }
 
         User user = getAuthUser(refreshToken);
-        return getJwtResponse(user, deviceId, deviceName, ipAddress);
+        return getJWTs(user, deviceId, deviceName);
     }
 
     private User getAuthUser(String refreshToken) {
-        String username = jwtService.extractUserName(refreshToken, true);
+        String username = jwtService.extractUserName(refreshToken, IS_REFRESH_TOKEN);
 
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new ApiException("Có lỗi xảy ra. Vui lòng đăng nhập lại!", HttpStatus.NOT_ACCEPTABLE));
+                .orElseThrow(() -> {
+                    String message = Utils.getMessage(messageSource, "error.auth.wrong");
+                    return new HandleException(message, HttpStatus.NOT_ACCEPTABLE);
+                });
     }
 
-    private JsonWebToken getJwtResponse(User user, String deviceId, String deviceName, String ipAddress) {
-        Device device = deviceService.findByDeviceId(deviceId);
+    private JWT getJWTs(User user, String deviceId, String deviceName) {
+        Device device = null;
+
+        if (deviceId != null && !deviceId.isBlank()) {
+            device = deviceService.findById(deviceId).orElse(null);
+        }
 
         if (device == null) {
-            Device.builder()
-                    .deviceId(deviceId)
+            device = Device.builder()
                     .deviceName(deviceName)
-                    .ipAddress(ipAddress)
                     .build();
         } else {
             device.setDeviceName(deviceName);
-            device.setIpAddress(ipAddress);
         }
 
         deviceService.saveOrUpdate(device);
-        String refreshToken = jwtService.generateToken(user, true);
-        String accessToken = jwtService.generateToken(user, false);
-        refreshTokenService.saveRefreshToken(deviceId, refreshToken);
+        String refreshToken = jwtService.generateToken(user, IS_REFRESH_TOKEN);
+        String accessToken = jwtService.generateToken(user, IS_ACCESS_TOKEN);
+        refreshTokenService.saveRefreshToken(device.getDeviceId(), refreshToken);
 
-        return new JsonWebToken(accessToken, refreshToken);
+        return new JWT(accessToken, refreshToken);
     }
 
     // TODO: Implement logout

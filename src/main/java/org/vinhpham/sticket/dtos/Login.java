@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class SignInRequest {
+public class Login {
 
     @NotBlank(message = "Tài khoản không được để trống")
     String username;

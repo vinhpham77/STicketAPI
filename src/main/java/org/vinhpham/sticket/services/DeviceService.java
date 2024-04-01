@@ -5,14 +5,16 @@ import org.springframework.stereotype.Service;
 import org.vinhpham.sticket.entities.Device;
 import org.vinhpham.sticket.repositories.DeviceRepository;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class DeviceService {
 
     private final DeviceRepository deviceRepository;
 
-    public Device findByDeviceId(String deviceId) {
-        return deviceRepository.findById(deviceId).orElse(null);
+    public Optional<Device> findById(String deviceId) {
+        return deviceRepository.findById(deviceId);
     }
 
     public Device saveOrUpdate(Device device) {

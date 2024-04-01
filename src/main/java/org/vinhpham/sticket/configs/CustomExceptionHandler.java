@@ -1,51 +1,53 @@
 package org.vinhpham.sticket.configs;
 
-import org.vinhpham.sticket.dtos.ApiException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
-import org.springframework.context.NoSuchMessageException;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
-import org.springframework.validation.ObjectError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.vinhpham.sticket.dtos.Failure;
+import org.vinhpham.sticket.dtos.HandleException;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 @ControllerAdvice
 @RequiredArgsConstructor
 public class CustomExceptionHandler {
-    private final MessageSource fieldMessageSource;
 
-    @ExceptionHandler({ApiException.class})
-    public ResponseEntity<?> handleException(final ApiException exception) {
-        return new ResponseEntity<>(exception.getMessage(), exception.getStatus());
+    private final MessageSource messageSource;
+
+    @ExceptionHandler({HandleException.class})
+    public ResponseEntity<?> handleException(final HandleException ex) {
+        return Failure.response(ex.getMessage(), ex.getStatus());
+    }
+
+    @ExceptionHandler({Throwable.class})
+    public ResponseEntity<?> handleUnexpectedException(final Throwable throwable) {
+        throwable.printStackTrace();
+        return Failure.internal(messageSource, "error.something.wrong");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
+        List<String> errors = new ArrayList<>();
+
         ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String displayName = getDisplayName(error);
             String errorMessage = error.getDefaultMessage();
-            errors.put(displayName, errorMessage);
+            errors.add(errorMessage);
         });
-        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+
+        String message = String.join("\n", errors);
+        return Failure.bad(message);
     }
 
-    public String getDisplayName(ObjectError error) {
-        String fieldName = ((FieldError) error).getField();
-        String objectName = error.getObjectName();
-        String field = objectName + "." + fieldName;
-
-        try {
-            return fieldMessageSource.getMessage(field, null, LocaleContextHolder.getLocale());
-        } catch (NoSuchMessageException e) {
-            return fieldName;
-        }
+    @ExceptionHandler({HttpRequestMethodNotSupportedException.class})
+    public ResponseEntity<?> handleNoHandlerFoundException(final HttpRequestMethodNotSupportedException ex) {
+        ex.printStackTrace();
+        return Failure.response(messageSource, "error.not.found", HttpStatus.NOT_FOUND);
     }
 }

@@ -22,10 +22,10 @@ import java.util.function.Function;
 public class JwtService {
 
     @Value("${token.secret.key}")
-    String jwtSecretKey;
+    private String jwtSecretKey;
 
     @Value("${token.expirationms}")
-    Long jwtExpirationMs;
+    private Long jwtExpirationMs;
 
     @Value("${token.refresh.secret.key}")
     private String jwtRefreshSecretKey;
@@ -63,6 +63,7 @@ public class JwtService {
 
     public Map<String, Object> setBasicClaims(User user) {
         Map<String, Object> claims = new HashMap<>();
+
         claims.put("role", user.getRole());
         claims.put("status", user.getStatus());
         claims.put("firstName", user.getFirstName());
@@ -85,13 +86,15 @@ public class JwtService {
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails, boolean isRefreshToken) {
         Key signingKey = isRefreshToken ? getRefreshSigningKey() : getSigningKey();
         var expirationMs = isRefreshToken ? jwtRefreshExpirationMs : jwtExpirationMs;
+        var now = new Date(System.currentTimeMillis());
+        var expiration = new Date(System.currentTimeMillis() + expirationMs);
 
         return Jwts
                 .builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
+                .setIssuedAt(now)
+                .setExpiration(expiration)
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }

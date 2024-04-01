@@ -1,4 +1,4 @@
-package org.vinhpham.sticket.security;
+package org.vinhpham.sticket.filters;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
@@ -33,16 +33,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
         String userName;
 
         if (StringUtils.isEmpty(authHeader) || !StringUtils.startsWith(authHeader, "Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
-        jwt = authHeader.substring(7);
+
+        final String JWT = authHeader.substring(7);
+
         try {
-            userName = jwtService.extractUserName(jwt, false);
+            userName = jwtService.extractUserName(JWT, false);
         } catch (ExpiredJwtException e) {
             response.setStatus(HttpServletResponse.SC_PRECONDITION_FAILED);
             return;
@@ -50,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.isNotEmpty(userName) && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userService.userDetailsService().loadUserByUsername(userName);
-            if (jwtService.isTokenValid(jwt, userDetails, false)) {
+            if (jwtService.isTokenValid(JWT, userDetails, false)) {
                 SecurityContext context = SecurityContextHolder.createEmptyContext();
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());

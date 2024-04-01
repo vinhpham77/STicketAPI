@@ -7,11 +7,12 @@ import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.util.Date;
+import java.util.UUID;
 
+@Builder
 @Getter
 @Setter
 @Entity
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "devices")
@@ -27,11 +28,6 @@ public class Device {
     @Column(name = "device_name", nullable = false)
     private String deviceName;
 
-    @Size(max = 50)
-    @NotNull
-    @Column(name = "ip_address", nullable = false, length = 50)
-    private String ipAddress;
-
     @NotNull
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", nullable = false)
@@ -46,6 +42,12 @@ public class Device {
     @PrePersist
     protected void onCreate() {
         createdAt = new Date();
+        deviceId = generateDeviceId();
+        deviceName = "Anonymous";
         updatedAt = new Date();
+    }
+
+    public static String generateDeviceId() {
+        return UUID.randomUUID().toString();
     }
 }

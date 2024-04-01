@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 @Builder
 @AllArgsConstructor
-public class JsonWebToken {
+public class JWT {
 
     String accessToken;
     String refreshToken;

@@ -13,6 +13,11 @@ spring.web.locale-resolver=fixed
 spring.cache.type=redis
 spring.data.redis.host=localhost
 spring.data.redis.port=6379
+spring.messages.always-use-message-format=false
+spring.messages.basename=messages
+spring.messages.encoding=UTF-8
+spring.messages.fallback-to-system-locale=true
+spring.messages.use-code-as-default-message=false
 # 1 week
 app.security.refresh-token.ttl=7
 

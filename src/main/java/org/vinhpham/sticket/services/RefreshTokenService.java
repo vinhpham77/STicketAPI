@@ -1,9 +1,9 @@
 package org.vinhpham.sticket.services;
 
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.vinhpham.sticket.dtos.RefreshToken;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -21,14 +21,13 @@ public class RefreshTokenService {
         this.refreshTokenTtl = Duration.ofDays(ttl);
     }
 
+    @Transactional
     public void saveRefreshToken(String deviceId, String refreshToken) {
-        RefreshToken token = new RefreshToken(deviceId, refreshToken, refreshTokenTtl);
-        redisTemplate.opsForValue().set(deviceId, token, refreshTokenTtl);
+        redisTemplate.opsForValue().set(deviceId, refreshToken, refreshTokenTtl);
     }
 
-    public Optional<RefreshToken> get(String deviceId) {
-        return Optional.ofNullable(
-                redisTemplate.opsForValue().get(deviceId)).map(RefreshToken.class::cast);
+    public Optional<String> get(String deviceId) {
+        return Optional.ofNullable((String) redisTemplate.opsForValue().get(deviceId));
     }
 
     public void deleteRefreshToken(String deviceId) {
