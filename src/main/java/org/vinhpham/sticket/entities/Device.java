@@ -41,13 +41,18 @@ public class Device {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = new Date();
-        deviceId = generateDeviceId();
-        deviceName = "Anonymous";
+        if (createdAt == null) createdAt = new Date();
+        if (deviceId == null || deviceId.isBlank()) deviceId = generateDeviceId();
+        if (deviceName == null || deviceName.isBlank()) deviceName = "Anonymous";
+        if (updatedAt == null) updatedAt = new Date();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
         updatedAt = new Date();
     }
 
-    public static String generateDeviceId() {
+    private static String generateDeviceId() {
         return UUID.randomUUID().toString();
     }
 }

@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Objects;
+import java.util.Set;
 
 @Setter
 @Getter
@@ -48,6 +49,13 @@ public class User implements UserDetails {
     @Column(name = "last_name", length = 50)
     private String lastName;
 
+    @OneToMany
+    @JoinTable(
+            name = "user_devices",
+            joinColumns = @JoinColumn(name = "username"),
+            inverseJoinColumns = @JoinColumn(name = "device_id"))
+    private Set<Device> devices;
+
     @Basic
     @Column(name = "email", nullable = false, unique = true, length = 50)
     private String email;
@@ -77,6 +85,11 @@ public class User implements UserDetails {
         if (role == null) role = Role.ROLE_user;
         if (createdAt == null) createdAt = new Date();
         if (updatedAt == null) updatedAt = new Date();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = new Date();
     }
 
     @Override

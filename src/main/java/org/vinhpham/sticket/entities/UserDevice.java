@@ -18,7 +18,7 @@ public class UserDevice {
     @MapsId("username")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "username", nullable = false)
-    private User username;
+    private User user;
 
     @MapsId("deviceId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

@@ -1,6 +1,5 @@
 package org.vinhpham.sticket.controllers;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,43 +41,17 @@ public class AuthController {
         }
     }
 
-    @GetMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-
-        if (cookies == null) {
-            return Failure.internal(messageSource, "error.something.wrong");
-        }
-
-        for (Cookie cookie : cookies) {
-            if (cookie.getName().equals("refresh_token")) {
-                // String refreshToken = cookie.getValue();
-                // TODO authenticationService.logout(refreshToken);
-                return Success.noContent();
-            }
-        }
-
-        return Failure.internal(messageSource, "error.something.wrong");
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody String refreshToken, @RequestParam(required = false, name = "apply") String apply, HttpServletRequest request) {
+        String deviceId = request.getHeader(Constants.KEY_DEVICE_ID);
+        authenticationService.logout(deviceId, apply, refreshToken);
+        return Success.noContent();
     }
 
-    @GetMapping("/refresh-token")
-    public ResponseEntity<?> getRefreshToken(HttpServletRequest request) {
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> getRefreshToken(@RequestBody String refreshToken, HttpServletRequest request) {
         String deviceId = request.getHeader(Constants.KEY_DEVICE_ID);
-        String deviceName = request.getHeader(Constants.KEY_DEVICE_NAME);
-        Cookie[] cookies = request.getCookies();
-
-        if (cookies == null) {
-            return Failure.internal(messageSource, "error.something.wrong");
-        }
-
-        for (Cookie cookie : cookies) {
-            if (cookie.getName().equals(Constants.KEY_REFRESH_TOKEN)) {
-                String refreshToken = cookie.getValue();
-                JWT jwt = authenticationService.refreshToken(refreshToken, deviceId, deviceName);
-                return Success.ok(jwt);
-            }
-        }
-
-        return Failure.internal(messageSource, "error.something.wrong");
+        JWT jwt = authenticationService.refreshToken(refreshToken, deviceId);
+        return Success.ok(jwt);
     }
 }

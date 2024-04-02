@@ -19,7 +19,9 @@ import org.vinhpham.sticket.entities.Device;
 import org.vinhpham.sticket.entities.User;
 import org.vinhpham.sticket.repositories.UserRepository;
 
+import java.util.Date;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.vinhpham.sticket.common.Constants.IS_ACCESS_TOKEN;
 import static org.vinhpham.sticket.common.Constants.IS_REFRESH_TOKEN;
@@ -82,12 +84,38 @@ public class AuthenticationService {
         }
 
         User user = (User) authentication.getPrincipal();
+        Set<Device> devices = user.getDevices();
+        Device device;
 
-        return getJWTs(user, deviceId, deviceName);
+        if (deviceId == null || deviceId.isBlank()) {
+            device = Device.builder()
+                    .deviceId(deviceId)
+                    .deviceName(deviceName)
+                    .build();
+        } else {
+            device = deviceService.findById(deviceId)
+                    .orElse(Device.builder()
+                            .deviceId(deviceId)
+                            .deviceName(deviceName)
+                            .build());
+
+            device.setDeviceName(deviceName);
+            device.setUpdatedAt(new Date());
+        }
+
+        devices.add(device);
+
+        if (!user.getDevices().equals(devices)) {
+            deviceService.save(device);
+            user.setDevices(devices);
+            userRepository.save(user);
+        }
+
+        return getJWTs(user, deviceId);
     }
 
     @Transactional
-    public JWT refreshToken(String refreshToken, String deviceId, String deviceName) {
+    public JWT refreshToken(String refreshToken, String deviceId) {
         Optional<String> jwt = refreshTokenService.get(deviceId);
 
         if (jwt.isEmpty() || !refreshToken.equals(jwt.get())) {
@@ -95,8 +123,20 @@ public class AuthenticationService {
             throw new HandleException(message, HttpStatus.PRECONDITION_FAILED);
         }
 
+        Optional<Device> device;
+
+        if (deviceId == null || deviceId.isBlank()) {
+            throw new HandleException("error.auth.wrong", HttpStatus.NOT_ACCEPTABLE);
+        } else {
+            device = deviceService.findById(deviceId);
+        }
+
+        if (device.isEmpty()) {
+            throw new HandleException("error.auth.wrong", HttpStatus.NOT_ACCEPTABLE);
+        }
+
         User user = getAuthUser(refreshToken);
-        return getJWTs(user, deviceId, deviceName);
+        return getJWTs(user, deviceId);
     }
 
     private User getAuthUser(String refreshToken) {
@@ -109,35 +149,38 @@ public class AuthenticationService {
                 });
     }
 
-    private JWT getJWTs(User user, String deviceId, String deviceName) {
-        Device device = null;
-
-        if (deviceId != null && !deviceId.isBlank()) {
-            device = deviceService.findById(deviceId).orElse(null);
-        }
-
-        if (device == null) {
-            device = Device.builder()
-                    .deviceName(deviceName)
-                    .build();
-        } else {
-            device.setDeviceName(deviceName);
-        }
-
-        deviceService.saveOrUpdate(device);
+    private JWT getJWTs(User user, String deviceId) {
         String refreshToken = jwtService.generateToken(user, IS_REFRESH_TOKEN);
         String accessToken = jwtService.generateToken(user, IS_ACCESS_TOKEN);
-        refreshTokenService.saveRefreshToken(device.getDeviceId(), refreshToken);
+
+        refreshTokenService.save(deviceId, refreshToken);
 
         return new JWT(accessToken, refreshToken);
     }
 
-    // TODO: Implement logout
-//    @Transactional
-//    public void logout(String refreshToken) {
-//        var user = getAuthUser(refreshToken);
-//        user.setRefreshToken(null);
-//        userRepository.save(user);
-//    }
+    @Transactional
+    public void logout(String deviceId, String apply, String refreshToken) {
+        var user = getAuthUser(refreshToken);
+
+        String storedRefreshToken = refreshTokenService.get(deviceId)
+                .orElseThrow(() -> {
+                    String message = Utils.getMessage(messageSource, "error.jwt.session.expired");
+                    return new HandleException(message, HttpStatus.PRECONDITION_FAILED);
+                });
+
+        if (!refreshToken.equals(storedRefreshToken)) {
+            String message = Utils.getMessage(messageSource, "error.jwt.session.expired");
+            throw new HandleException(message, HttpStatus.PRECONDITION_FAILED);
+        }
+
+        if (apply != null && apply.equals("all")) {
+            Set<Device> devices = user.getDevices();
+            deviceService.deleteMany(devices);
+            refreshTokenService.deleteMany(devices);
+        } else {
+            deviceService.deleteById(deviceId);
+            refreshTokenService.delete(deviceId);
+        }
+    }
 
 }

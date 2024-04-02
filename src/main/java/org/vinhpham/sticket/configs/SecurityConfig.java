@@ -60,7 +60,7 @@ public class SecurityConfig {
                     return corsConfiguration;
                 }))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/auth/register", "/auth/login", "/auth/refresh-token").permitAll()
+                        .requestMatchers("/auth/register", "/auth/login", "/auth/logout", "/auth/refresh-token").permitAll()
                         .anyRequest().authenticated())
 
                 .authenticationProvider(authenticationProvider())
