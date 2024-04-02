@@ -12,15 +12,15 @@ public class Success {
     }
 
     public static ResponseEntity<?> ok(Object data) {
-        return new ResponseEntity<>(new Data(data), HttpStatus.OK);
+        return new ResponseEntity<>(data, HttpStatus.OK);
     }
 
     public static ResponseEntity<?> response(Object data, HttpStatus status) {
-        return new ResponseEntity<>(new Data(data), status);
+        return new ResponseEntity<>(data, status);
     }
 
     public static ResponseEntity<?> response(MessageSource messageSource, String code, HttpStatus status, Object... args) {
         String message = Utils.getMessage(messageSource, code, args);
-        return new ResponseEntity<>(new Data(message), status);
+        return new ResponseEntity<>(message, status);
     }
 }

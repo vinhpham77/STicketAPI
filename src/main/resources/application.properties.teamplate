@@ -1,30 +1,26 @@
 spring.application.name=STicket
-spring.datasource.url=jdbc:mysql://0.0.0.0:3306/s_ticket
+spring.datasource.url=jdbc:mysql://host:port/database
 spring.datasource.username=username
 spring.datasource.password=password
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
-server.port=8888
+server.port=port
 server.servlet.context-path=/api
 spring.servlet.multipart.max-file-size=2MB
 spring.servlet.multipart.max-request-size=15MB
 spring.web.locale=vi_VN
-spring.web.locale-resolver=fixed
 spring.cache.type=redis
-spring.data.redis.host=localhost
-spring.data.redis.port=6379
-spring.messages.always-use-message-format=false
-spring.messages.basename=messages
-spring.messages.encoding=UTF-8
+spring.data.redis.host=host
+spring.data.redis.port=port
+spring.messages.basename=i18n.messages
 spring.messages.fallback-to-system-locale=true
-spring.messages.use-code-as-default-message=false
-# 1 week
-app.security.refresh-token.ttl=7
+spring.messages.encoding=UTF-8
 
+app.security.refresh-token.ttl=7
 # node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-token.secret.key=48a868a4042f634ac04a117f00a87202131dd7c46c4b32c4acb3edc5e15f4511
-# JWT expiration is 1 days
-token.expirationms= 86400000
-token.refresh.secret.key=TWFuIGlzIGRpc3Rpbmd1aXNoZWQsIG5vdCBvbmx5IGJ5IGhpcyByZWFzb24sIGJ1dCAuLi4
-# Refresh token expiration is 1 month
-token.refresh.expirationms= 2592000000
+token.secret.key=access_secret_key
+# AccessToken expiration is 5 minutes
+token.expirationms=300000
+token.refresh.secret.key=refresh_secret_key
+# Refresh token expiration is 7 days
+token.refresh.expirationms=604800000
